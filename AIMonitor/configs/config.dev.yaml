@@ -1,0 +1,188 @@
+# AI监控系统开发环境配置文件
+# 使用SQLite数据库，无需额外安装PostgreSQL
+
+# 服务器配置
+server:
+  host: "0.0.0.0"
+  port: 8080
+  mode: "debug" # debug, release, test
+  read_timeout: 30s
+  write_timeout: 30s
+  idle_timeout: 60s
+  max_header_bytes: 1048576
+
+# 数据库配置 - 使用SQLite进行开发（无需外部数据库）
+database:
+  driver: sqlite
+  host: ""
+  port: 0
+  name: ":memory:"
+  user: ""
+  password: ""
+  max_connections: 10
+  max_idle_conns: 5
+  max_lifetime: 3600
+  ssl_mode: disable
+
+# Redis配置 - 开发环境可选
+redis:
+  host: "localhost"
+  port: 6379
+  password: ""
+  db: 0
+  pool_size: 10
+  min_idle_conns: 5
+  dial_timeout: 5s
+  read_timeout: 3s
+  write_timeout: 3s
+  pool_timeout: 4s
+  idle_timeout: 300s
+  idle_check_frequency: 60s
+
+# JWT配置
+jwt:
+  secret_key: "dev-secret-key-change-in-production"
+  access_token_expiry: 24h
+  refresh_token_expiry: 168h # 7 days
+  issuer: "ai-monitor-dev"
+
+# Prometheus配置 - 开发环境可选
+prometheus:
+  url: "http://localhost:9090"
+  timeout: 30s
+  max_samples: 50000000
+  query_timeout: 2m
+  
+# Elasticsearch配置 - 开发环境可选
+elasticsearch:
+  addresses:
+    - "http://localhost:9200"
+  username: ""
+  password: ""
+  timeout: 30s
+  max_retries: 3
+  retry_backoff: 100ms
+
+# AI模型配置 - 开发环境使用模拟数据
+ai_models:
+  openai:
+    api_key: "sk-mock-key-for-development"
+    base_url: "https://api.openai.com/v1"
+    model: "gpt-4"
+    temperature: 0.7
+    max_tokens: 4000
+    timeout: 60s
+    enabled: false # 开发环境禁用真实API调用
+  
+  claude:
+    api_key: "mock-claude-key-for-development"
+    base_url: "https://api.anthropic.com"
+    model: "claude-3-sonnet-20240229"
+    temperature: 0.7
+    max_tokens: 4000
+    timeout: 60s
+    enabled: false # 开发环境禁用真实API调用
+
+# 邮件配置 - 开发环境使用控制台输出
+email:
+  smtp:
+    host: "localhost"
+    port: 1025
+    username: "dev@example.com"
+    password: "password"
+    from: "AI Monitor Dev <dev@example.com>"
+    use_tls: false
+    enabled: false # 开发环境禁用邮件发送
+
+# 告警配置
+alerting:
+  evaluation_interval: 30s
+  notification_timeout: 30s
+  group_wait: 10s
+  group_interval: 5m
+  repeat_interval: 12h
+  max_alerts_per_group: 100
+  
+  # 告警收敛配置
+  aggregation:
+    enabled: true
+    time_window: 5m
+    max_count: 5
+    group_by:
+      - "alertname"
+      - "instance"
+      - "severity"
+
+# 数据采集配置
+collector:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  evaluation_interval: 30s
+  
+  # 平台配置
+  platforms:
+    windows:
+      enabled: true
+      exporters:
+        - "windows_exporter"
+      metrics:
+        - "cpu"
+        - "memory"
+        - "disk"
+        - "network"
+    
+    linux:
+      enabled: false # 开发环境可选
+      exporters:
+        - "node_exporter"
+      metrics:
+        - "cpu"
+        - "memory"
+        - "disk"
+        - "network"
+
+# 日志配置
+logging:
+  level: "debug" # 开发环境使用debug级别
+  format: "text" # 开发环境使用文本格式便于阅读
+  output: "console" # 输出到控制台
+  file_path: "logs/ai-monitor-dev.log"
+  max_size: 50 # MB
+  max_backups: 3
+  max_age: 7 # days
+  compress: false
+
+# 安全配置
+security:
+  cors:
+    enabled: true
+    allowed_origins:
+      - "http://localhost:3000"
+      - "http://localhost:8080"
+    allowed_methods:
+      - "GET"
+      - "POST"
+      - "PUT"
+      - "DELETE"
+      - "OPTIONS"
+    allowed_headers:
+      - "*"
+    allow_credentials: true
+  
+  rate_limit:
+    enabled: false # 开发环境禁用限流
+    requests_per_minute: 1000
+    burst: 100
+  
+  api_key:
+    enabled: false # 开发环境禁用API密钥验证
+    header_name: "X-API-Key"
+    keys: []
+
+# 开发环境特殊配置
+development:
+  mock_data: true # 启用模拟数据
+  auto_migrate: true # 自动执行数据库迁移
+  seed_data: true # 自动填充测试数据
+  debug_routes: true # 启用调试路由
+  profiling: true # 启用性能分析

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>测试登录</title>
+</head>
+<body>
+    <h1>AI Monitor 登录测试</h1>
+    <button onclick="testLogin()">测试登录</button>
+    <button onclick="testKnowledgeAPI()">测试知识库API</button>
+    <div id="result"></div>
+
+    <script>
+        async function testLogin() {
+            try {
+                const response = await fetch('http://localhost:8080/api/v1/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: 'admin',
+                        password: 'admin123'
+                    })
+                });
+                
+                const data = await response.json();
+                console.log('登录响应:', data);
+                
+                if (data.code === 200 && data.data && data.data.token) {
+                    localStorage.setItem('ai_monitor_token', data.data.token);
+                    document.getElementById('result').innerHTML = '<p style="color: green;">登录成功！Token已保存</p>';
+                } else {
+                    document.getElementById('result').innerHTML = '<p style="color: red;">登录失败: ' + (data.message || '未知错误') + '</p>';
+                }
+            } catch (error) {
+                console.error('登录错误:', error);
+                document.getElementById('result').innerHTML = '<p style="color: red;">登录错误: ' + error.message + '</p>';
+            }
+        }
+        
+        async function testKnowledgeAPI() {
+            const token = localStorage.getItem('ai_monitor_token');
+            if (!token) {
+                document.getElementById('result').innerHTML = '<p style="color: red;">请先登录获取token</p>';
+                return;
+            }
+            
+            try {
+                const response = await fetch('http://localhost:8080/api/v1/ai/knowledge-base', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    }
+                });
+                
+                console.log('API响应状态:', response.status);
+                console.log('API响应头:', response.headers);
+                
+                const data = await response.json();
+                console.log('API响应数据:', data);
+                
+                document.getElementById('result').innerHTML = '<p style="color: green;">API调用成功！状态码: ' + response.status + '</p><pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            } catch (error) {
+                console.error('API调用错误:', error);
+                document.getElementById('result').innerHTML = '<p style="color: red;">API调用错误: ' + error.message + '</p>';
+            }
+        }
+    </script>
+</body>
+</html>

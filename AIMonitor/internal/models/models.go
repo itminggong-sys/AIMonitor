@@ -1,0 +1,559 @@
+package models
+
+import (
+	"time"
+
+	"github.com/google/uuid"
+	"gorm.io/gorm"
+)
+
+// BaseModel 基础模型
+type BaseModel struct {
+	ID        uuid.UUID      `json:"id" gorm:"type:char(36);primary_key"`
+	CreatedAt time.Time      `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt time.Time      `json:"updated_at" gorm:"autoUpdateTime"`
+	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
+}
+
+// BeforeCreate 在创建记录前自动生成UUID
+func (base *BaseModel) BeforeCreate(tx *gorm.DB) error {
+	if base.ID == (uuid.UUID{}) {
+		base.ID = uuid.New()
+	}
+	return nil
+}
+
+// User 用户模型
+type User struct {
+	BaseModel
+	Username    string    `json:"username" gorm:"uniqueIndex;not null;size:50" validate:"required,min=3,max=50"`
+	Email       string    `json:"email" gorm:"uniqueIndex;not null;size:100" validate:"required,email"`
+	Password    string    `json:"-" gorm:"not null;size:255" validate:"required,min=6"`
+	FullName    string    `json:"full_name" gorm:"size:100"`
+	Avatar      string    `json:"avatar" gorm:"size:255"`
+	Phone       string    `json:"phone" gorm:"size:20"`
+	Status      string    `json:"status" gorm:"default:'active';size:20" validate:"oneof=active inactive locked"`
+	LastLoginAt *time.Time `json:"last_login_at"`
+	LoginCount  int       `json:"login_count" gorm:"default:0"`
+	Roles       []Role    `json:"roles" gorm:"many2many:user_roles;"`
+	AuditLogs   []AuditLog `json:"-" gorm:"foreignKey:UserID"`
+}
+
+// Role 角色模型
+type Role struct {
+	BaseModel
+	Name        string       `json:"name" gorm:"uniqueIndex;not null;size:50" validate:"required"`
+	Description string       `json:"description" gorm:"size:255"`
+	Status      string       `json:"status" gorm:"default:'active';size:20" validate:"oneof=active inactive"`
+	Users       []User       `json:"-" gorm:"many2many:user_roles;"`
+	Permissions []Permission `json:"permissions" gorm:"many2many:role_permissions;"`
+}
+
+// Permission 权限模型
+type Permission struct {
+	BaseModel
+	Name        string `json:"name" gorm:"uniqueIndex;not null;size:100" validate:"required"`
+	Resource    string `json:"resource" gorm:"not null;size:50" validate:"required"`
+	Action      string `json:"action" gorm:"not null;size:50" validate:"required"`
+	Description string `json:"description" gorm:"size:255"`
+	Roles       []Role `json:"-" gorm:"many2many:role_permissions;"`
+}
+
+// AlertRule 告警规则模型
+type AlertRule struct {
+	BaseModel
+	Name        string `json:"name" gorm:"not null;size:100" validate:"required"`
+	Description string `json:"description" gorm:"size:500"`
+	Metric      string `json:"metric" gorm:"not null;size:100" validate:"required"`
+	Condition   string `json:"condition" gorm:"not null;size:20" validate:"required,oneof=gt gte lt lte eq ne"`
+	Threshold   float64 `json:"threshold" gorm:"not null" validate:"required"`
+	Duration    int    `json:"duration" gorm:"not null;default:300" validate:"min=60"`
+	Severity    string `json:"severity" gorm:"not null;size:20" validate:"required,oneof=critical high medium low"`
+	Enabled     bool   `json:"enabled" gorm:"default:true"`
+	Query       string `json:"query" gorm:"type:text"`
+	Labels      string `json:"labels" gorm:"type:json"`
+	Annotations string `json:"annotations" gorm:"type:json"`
+	GroupBy     string `json:"group_by" gorm:"size:255"`
+	CreatedBy   uuid.UUID `json:"created_by" gorm:"type:char(36);not null"`
+	UpdatedBy   uuid.UUID `json:"updated_by" gorm:"type:char(36)"`
+	Alerts      []Alert   `json:"-" gorm:"foreignKey:RuleID"`
+}
+
+// Alert 告警实例模型
+type Alert struct {
+	BaseModel
+	RuleID      uuid.UUID  `json:"rule_id" gorm:"type:char(36);not null;index"`
+	Rule        AlertRule  `json:"rule" gorm:"foreignKey:RuleID"`
+	Fingerprint string     `json:"fingerprint" gorm:"uniqueIndex;not null;size:64"`
+	Status      string     `json:"status" gorm:"not null;size:20;index" validate:"oneof=firing resolved"`
+	Severity    string     `json:"severity" gorm:"not null;size:20;index"`
+	StartsAt    time.Time  `json:"starts_at" gorm:"not null;index"`
+	EndsAt      *time.Time `json:"ends_at" gorm:"index"`
+	Value       float64    `json:"value"`
+	Labels      string     `json:"labels" gorm:"type:json"`
+	Annotations string     `json:"annotations" gorm:"type:json"`
+	Summary     string     `json:"summary" gorm:"size:500"`
+	Description string     `json:"description" gorm:"type:text"`
+	Silenced    bool       `json:"silenced" gorm:"default:false;index"`
+	Acknowledged bool      `json:"acknowledged" gorm:"default:false;index"`
+	AcknowledgedBy *uuid.UUID `json:"acknowledged_by" gorm:"type:char(36)"`
+	AcknowledgedAt *time.Time `json:"acknowledged_at"`
+	Notifications []AlertNotification `json:"-" gorm:"foreignKey:AlertID"`
+	AIAnalysis    []AIAnalysisResult  `json:"ai_analysis" gorm:"foreignKey:AlertID"`
+}
+
+// AlertNotification 告警通知模型
+type AlertNotification struct {
+	BaseModel
+	AlertID     uuid.UUID `json:"alert_id" gorm:"type:char(36);not null;index"`
+	Alert       Alert     `json:"-" gorm:"foreignKey:AlertID"`
+	Channel     string    `json:"channel" gorm:"not null;size:50" validate:"required,oneof=email sms webhook slack"`
+	Recipient   string    `json:"recipient" gorm:"not null;size:255" validate:"required"`
+	Status      string    `json:"status" gorm:"not null;size:20;index" validate:"oneof=pending sent failed"`
+	SentAt      *time.Time `json:"sent_at"`
+	Error       string    `json:"error" gorm:"type:text"`
+	RetryCount  int       `json:"retry_count" gorm:"default:0"`
+	MaxRetries  int       `json:"max_retries" gorm:"default:3"`
+}
+
+// SystemConfig 系统配置模型
+type SystemConfig struct {
+	BaseModel
+	Key         string `json:"key" gorm:"uniqueIndex;not null;size:100" validate:"required"`
+	Value       string `json:"value" gorm:"type:text"`
+	Description string `json:"description" gorm:"size:500"`
+	Category    string `json:"category" gorm:"not null;size:50;index" validate:"required"`
+	DataType    string `json:"data_type" gorm:"not null;size:20" validate:"required,oneof=string int float bool json"`
+	IsSecret    bool   `json:"is_secret" gorm:"default:false"`
+	UpdatedBy   uuid.UUID `json:"updated_by" gorm:"type:char(36)"`
+}
+
+// AuditLog 审计日志模型
+type AuditLog struct {
+	BaseModel
+	UserID      uuid.UUID `json:"user_id" gorm:"type:char(36);index"`
+	User        User      `json:"user" gorm:"foreignKey:UserID"`
+	Action      string    `json:"action" gorm:"not null;size:100;index" validate:"required"`
+	Resource    string    `json:"resource" gorm:"not null;size:100;index" validate:"required"`
+	ResourceID  string    `json:"resource_id" gorm:"size:100;index"`
+	Details     string    `json:"details" gorm:"type:json"`
+	IPAddress   string    `json:"ip_address" gorm:"size:45;index"`
+	UserAgent   string    `json:"user_agent" gorm:"size:500"`
+	Status      string    `json:"status" gorm:"not null;size:20;index" validate:"required,oneof=success failed"`
+	Error       string    `json:"error" gorm:"type:text"`
+}
+
+// AIAnalysisResult AI分析结果模型
+type AIAnalysisResult struct {
+	BaseModel
+	AlertID         uuid.UUID `json:"alert_id" gorm:"type:char(36);not null;index"`
+	Alert           Alert     `json:"-" gorm:"foreignKey:AlertID"`
+	AnalysisType    string    `json:"analysis_type" gorm:"not null;size:50;index" validate:"required,oneof=root_cause impact_assessment remediation_suggestion trend_analysis"`
+	Model           string    `json:"model" gorm:"not null;size:50" validate:"required"`
+	Prompt          string    `json:"prompt" gorm:"type:text"`
+	Response        string    `json:"response" gorm:"type:text"`
+	Confidence      float64   `json:"confidence" gorm:"default:0"`
+	TokensUsed      int       `json:"tokens_used" gorm:"default:0"`
+	Cost            float64   `json:"cost" gorm:"default:0"`
+	ProcessingTime  int       `json:"processing_time" gorm:"default:0"`
+	Status          string    `json:"status" gorm:"not null;size:20;index" validate:"required,oneof=pending processing completed failed"`
+	Error           string    `json:"error" gorm:"type:text"`
+	Metadata        string    `json:"metadata" gorm:"type:json"`
+}
+
+// KnowledgeBase 知识库模�?
+type KnowledgeBase struct {
+	BaseModel
+	Title       string `json:"title" gorm:"not null;size:200" validate:"required"`
+	Content     string `json:"content" gorm:"type:text" validate:"required"`
+	Category    string `json:"category" gorm:"not null;size:50;index" validate:"required"`
+	Tags        string `json:"tags" gorm:"type:json"`
+	Metrics     string `json:"metrics" gorm:"type:json"`
+	Severity    string `json:"severity" gorm:"size:20;index"`
+	Platform    string `json:"platform" gorm:"size:50;index"`
+	Version     string `json:"version" gorm:"size:20"`
+	Status      string `json:"status" gorm:"default:'active';size:20;index" validate:"oneof=active inactive draft"`
+	ViewCount   int    `json:"view_count" gorm:"default:0"`
+	UsefulCount int    `json:"useful_count" gorm:"default:0"`
+	CreatedBy   uuid.UUID `json:"created_by" gorm:"type:char(36);not null"`
+	UpdatedBy   uuid.UUID `json:"updated_by" gorm:"type:char(36)"`
+}
+
+// MonitoringTarget 监控目标模型
+type MonitoringTarget struct {
+	BaseModel
+	Name        string `json:"name" gorm:"not null;size:100" validate:"required"`
+	Type        string `json:"type" gorm:"not null;size:50;index" validate:"required,oneof=server container service database network"`
+	Platform    string `json:"platform" gorm:"not null;size:50;index" validate:"required,oneof=windows linux macos esxi docker kubernetes"`
+	Address     string `json:"address" gorm:"not null;size:255" validate:"required"`
+	Port        int    `json:"port" gorm:"default:0"`
+	Credentials string `json:"credentials" gorm:"type:json"`
+	Labels      string `json:"labels" gorm:"type:json"`
+	Metrics     string `json:"metrics" gorm:"type:json"`
+	Status      string `json:"status" gorm:"default:'active';size:20;index" validate:"oneof=active inactive error"`
+	LastSeen    *time.Time `json:"last_seen"`
+	CreatedBy   uuid.UUID `json:"created_by" gorm:"type:char(36);not null"`
+	UpdatedBy   uuid.UUID `json:"updated_by" gorm:"type:char(36)"`
+}
+
+// MetricData 指标数据模型
+type MetricData struct {
+	ID        uuid.UUID `json:"id" gorm:"type:char(36);primary_key;"`
+	TargetID  uuid.UUID `json:"target_id" gorm:"type:char(36);not null;index"`
+	Target    MonitoringTarget `json:"-" gorm:"foreignKey:TargetID"`
+	Metric    string    `json:"metric" gorm:"not null;size:100;index" validate:"required"`
+	Value     float64   `json:"value" gorm:"not null"`
+	Labels    string    `json:"labels" gorm:"type:json"`
+	Timestamp time.Time `json:"timestamp" gorm:"not null;index"`
+	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
+}
+
+// Dashboard 仪表板模�?
+type Dashboard struct {
+	BaseModel
+	Name        string `json:"name" gorm:"not null;size:100" validate:"required"`
+	Description string `json:"description" gorm:"size:500"`
+	Config      string `json:"config" gorm:"type:json" validate:"required"`
+	IsPublic    bool   `json:"is_public" gorm:"default:false"`
+	Tags        string `json:"tags" gorm:"type:json"`
+	ViewCount   int    `json:"view_count" gorm:"default:0"`
+	CreatedBy   uuid.UUID `json:"created_by" gorm:"type:char(36);not null"`
+	UpdatedBy   uuid.UUID `json:"updated_by" gorm:"type:char(36)"`
+}
+
+// NotificationChannel 通知渠道模型
+type NotificationChannel struct {
+	BaseModel
+	Name        string `json:"name" gorm:"not null;size:100" validate:"required"`
+	Type        string `json:"type" gorm:"not null;size:50;index" validate:"required,oneof=email sms webhook slack dingtalk wechat"`
+	Config      string `json:"config" gorm:"type:json" validate:"required"`
+	Enabled     bool   `json:"enabled" gorm:"default:true"`
+	Description string `json:"description" gorm:"size:500"`
+	CreatedBy   uuid.UUID `json:"created_by" gorm:"type:char(36);not null"`
+	UpdatedBy   uuid.UUID `json:"updated_by" gorm:"type:char(36)"`
+}
+
+// MiddlewareMonitor 中间件监控模�?
+type MiddlewareMonitor struct {
+	BaseModel
+	Name         string `json:"name" gorm:"not null;size:100" validate:"required"`
+	Type         string `json:"type" gorm:"not null;size:50;index" validate:"required,oneof=mysql redis kafka elasticsearch mongodb postgresql"`
+	Address      string `json:"address" gorm:"not null;size:255" validate:"required"`
+	Port         int    `json:"port" gorm:"not null" validate:"required,min=1,max=65535"`
+	Credentials  string `json:"credentials" gorm:"type:json"`
+	Config       string `json:"config" gorm:"type:json"`
+	Status       string `json:"status" gorm:"default:'active';size:20;index" validate:"oneof=active inactive error"`
+	LastCheck    *time.Time `json:"last_check"`
+	Metrics      string `json:"metrics" gorm:"type:json"`
+	Tags         string `json:"tags" gorm:"type:json"`
+	CreatedBy    uuid.UUID `json:"created_by" gorm:"type:char(36);not null"`
+	UpdatedBy    uuid.UUID `json:"updated_by" gorm:"type:char(36)"`
+}
+
+// APMTrace APM链路追踪模型
+type APMTrace struct {
+	ID           uuid.UUID `json:"id" gorm:"type:char(36);primary_key;"`
+	TraceID      string    `json:"trace_id" gorm:"not null;size:32;index" validate:"required"`
+	SpanID       string    `json:"span_id" gorm:"not null;size:16;index" validate:"required"`
+	ParentSpanID string    `json:"parent_span_id" gorm:"size:16;index"`
+	OperationName string   `json:"operation_name" gorm:"not null;size:255" validate:"required"`
+	ServiceName  string    `json:"service_name" gorm:"not null;size:100;index" validate:"required"`
+	StartTime    time.Time `json:"start_time" gorm:"not null;index"`
+	EndTime      time.Time `json:"end_time" gorm:"not null;index"`
+	Duration     int64     `json:"duration" gorm:"not null;index"`
+	Status       string    `json:"status" gorm:"not null;size:20;index" validate:"required,oneof=ok error timeout"`
+	Tags         string    `json:"tags" gorm:"type:json"`
+	Logs         string    `json:"logs" gorm:"type:json"`
+	Process      string    `json:"process" gorm:"type:json"`
+	CreatedAt    time.Time `json:"created_at" gorm:"autoCreateTime"`
+}
+
+// APMService APM服务模型
+type APMService struct {
+	BaseModel
+	Name         string `json:"name" gorm:"not null;size:100;uniqueIndex" validate:"required"`
+	Version      string `json:"version" gorm:"size:50"`
+	Environment  string `json:"environment" gorm:"size:50;index"`
+	Language     string `json:"language" gorm:"size:50"`
+	Framework    string `json:"framework" gorm:"size:50"`
+	Status       string `json:"status" gorm:"default:'active';size:20;index" validate:"oneof=active inactive error"`
+	LastSeen     *time.Time `json:"last_seen"`
+	Metrics      string `json:"metrics" gorm:"type:json"`
+	Tags         string `json:"tags" gorm:"type:json"`
+	CreatedBy    uuid.UUID `json:"created_by" gorm:"type:char(36);not null"`
+	UpdatedBy    uuid.UUID `json:"updated_by" gorm:"type:char(36)"`
+}
+
+// ContainerMonitor 容器监控模型
+type ContainerMonitor struct {
+	BaseModel
+	ContainerID   string `json:"container_id" gorm:"not null;size:64;uniqueIndex" validate:"required"`
+	Name          string `json:"name" gorm:"not null;size:255" validate:"required"`
+	Image         string `json:"image" gorm:"not null;size:255" validate:"required"`
+	ImageTag      string `json:"image_tag" gorm:"size:100"`
+	Platform      string `json:"platform" gorm:"not null;size:50;index" validate:"required,oneof=docker kubernetes"`
+	Namespace     string `json:"namespace" gorm:"size:100;index"`
+	PodName       string `json:"pod_name" gorm:"size:255;index"`
+	NodeName      string `json:"node_name" gorm:"size:255;index"`
+	Status        string `json:"status" gorm:"not null;size:20;index" validate:"required,oneof=running stopped paused exited error"`
+	StartedAt     *time.Time `json:"started_at"`
+	FinishedAt    *time.Time `json:"finished_at"`
+	RestartCount  int    `json:"restart_count" gorm:"default:0"`
+	CPULimit      string `json:"cpu_limit" gorm:"size:50"`
+	MemoryLimit   string `json:"memory_limit" gorm:"size:50"`
+	CPURequest    string `json:"cpu_request" gorm:"size:50"`
+	MemoryRequest string `json:"memory_request" gorm:"size:50"`
+	Labels        string `json:"labels" gorm:"type:json"`
+	Annotations   string `json:"annotations" gorm:"type:json"`
+	Metrics       string `json:"metrics" gorm:"type:json"`
+	LastSeen      *time.Time `json:"last_seen"`
+	CreatedBy     uuid.UUID `json:"created_by" gorm:"type:char(36);not null"`
+	UpdatedBy     uuid.UUID `json:"updated_by" gorm:"type:char(36)"`
+}
+
+// AgentInfo Agent信息模型
+type AgentInfo struct {
+	BaseModel
+	Name         string `json:"name" gorm:"not null;size:100;uniqueIndex" validate:"required"`
+	Type         string `json:"type" gorm:"not null;size:50;index" validate:"required,oneof=node_exporter mysql_exporter redis_exporter kafka_exporter custom"`
+	Version      string `json:"version" gorm:"not null;size:50" validate:"required"`
+	Platform     string `json:"platform" gorm:"not null;size:50;index" validate:"required,oneof=linux windows macos"`
+	Architecture string `json:"architecture" gorm:"not null;size:20" validate:"required,oneof=amd64 arm64 386"`
+	Hostname     string `json:"hostname" gorm:"not null;size:255" validate:"required"`
+	IPAddress    string `json:"ip_address" gorm:"not null;size:45" validate:"required"`
+	Port         int    `json:"port" gorm:"default:9100"`
+	Status       string `json:"status" gorm:"default:'pending';size:20;index" validate:"oneof=pending active inactive error"`
+	LastSeen     *time.Time `json:"last_seen"`
+	Config       string `json:"config" gorm:"type:json"`
+	Metrics      string `json:"metrics" gorm:"type:json"`
+	Tags         string `json:"tags" gorm:"type:json"`
+	CreatedBy    uuid.UUID `json:"created_by" gorm:"type:char(36);not null"`
+	UpdatedBy    uuid.UUID `json:"updated_by" gorm:"type:char(36)"`
+}
+
+// AgentDeployment Agent部署模型
+type AgentDeployment struct {
+	BaseModel
+	Name        string `json:"name" gorm:"not null;size:100" validate:"required"`
+	Description string `json:"description" gorm:"size:500"`
+	AgentType   string `json:"agent_type" gorm:"not null;size:50;index" validate:"required"`
+	Version     string `json:"version" gorm:"not null;size:50" validate:"required"`
+	Targets     string `json:"targets" gorm:"type:json" validate:"required"`
+	Config      string `json:"config" gorm:"type:json"`
+	Status      string `json:"status" gorm:"default:'pending';size:20;index" validate:"oneof=pending running completed failed partial"`
+	Progress    string `json:"progress" gorm:"type:json"`
+	Logs        string `json:"logs" gorm:"type:text"`
+	CreatedBy   uuid.UUID `json:"created_by" gorm:"type:char(36);not null"`
+	UpdatedBy   uuid.UUID `json:"updated_by" gorm:"type:char(36)"`
+}
+
+// AgentPackage Agent安装包模�?
+type AgentPackage struct {
+	BaseModel
+	Name         string `json:"name" gorm:"not null;size:100" validate:"required"`
+	Type         string `json:"type" gorm:"not null;size:50;index" validate:"required"`
+	Version      string `json:"version" gorm:"not null;size:50" validate:"required"`
+	Platform     string `json:"platform" gorm:"not null;size:50;index" validate:"required"`
+	Architecture string `json:"architecture" gorm:"not null;size:20" validate:"required"`
+	Size         int64  `json:"size" gorm:"not null"`
+	Checksum     string `json:"checksum" gorm:"not null;size:128" validate:"required"`
+	DownloadURL  string `json:"download_url" gorm:"not null;size:500" validate:"required"`
+	Description  string `json:"description" gorm:"size:500"`
+	ReleaseNotes string `json:"release_notes" gorm:"type:text"`
+	Status       string `json:"status" gorm:"default:'active';size:20;index" validate:"oneof=active inactive deprecated"`
+	CreatedBy    uuid.UUID `json:"created_by" gorm:"type:char(36);not null"`
+	UpdatedBy    uuid.UUID `json:"updated_by" gorm:"type:char(36)"`
+}
+
+// APIKey Agent API密钥模型
+type APIKey struct {
+	BaseModel
+	Name        string `json:"name" gorm:"not null;size:100" validate:"required"`
+	Key         string `json:"key" gorm:"not null;size:255;uniqueIndex" validate:"required"`
+	Description string `json:"description" gorm:"size:500"`
+	Status      string `json:"status" gorm:"default:'active';size:20;index" validate:"oneof=active inactive expired"`
+	ExpiresAt   *time.Time `json:"expires_at"`
+	LastUsedAt  *time.Time `json:"last_used_at"`
+	UsageCount  int64 `json:"usage_count" gorm:"default:0"`
+	CreatedBy   uuid.UUID `json:"created_by" gorm:"type:char(36);not null"`
+	UpdatedBy   uuid.UUID `json:"updated_by" gorm:"type:char(36)"`
+}
+
+// TableName 指定表名
+func (User) TableName() string                { return "users" }
+func (Role) TableName() string                { return "roles" }
+func (Permission) TableName() string          { return "permissions" }
+func (AlertRule) TableName() string           { return "alert_rules" }
+func (Alert) TableName() string               { return "alerts" }
+func (AlertNotification) TableName() string   { return "alert_notifications" }
+func (SystemConfig) TableName() string        { return "system_configs" }
+func (AuditLog) TableName() string            { return "audit_logs" }
+func (AIAnalysisResult) TableName() string    { return "ai_analysis_results" }
+func (KnowledgeBase) TableName() string       { return "knowledge_base" }
+func (MonitoringTarget) TableName() string    { return "monitoring_targets" }
+func (MetricData) TableName() string          { return "metric_data" }
+func (Dashboard) TableName() string           { return "dashboards" }
+func (NotificationChannel) TableName() string { return "notification_channels" }
+func (MiddlewareMonitor) TableName() string   { return "middleware_monitors" }
+func (APMTrace) TableName() string            { return "apm_traces" }
+func (APMService) TableName() string          { return "apm_services" }
+func (ContainerMonitor) TableName() string    { return "container_monitors" }
+func (AgentInfo) TableName() string           { return "agent_infos" }
+func (AgentDeployment) TableName() string     { return "agent_deployments" }
+func (AgentPackage) TableName() string        { return "agent_packages" }
+func (APIKey) TableName() string              { return "api_keys" }
+
+// BeforeCreate 创建前钩�?
+func (u *User) BeforeCreate(tx *gorm.DB) error {
+	if u.ID == uuid.Nil {
+		u.ID = uuid.New()
+	}
+	return nil
+}
+
+func (r *Role) BeforeCreate(tx *gorm.DB) error {
+	if r.ID == uuid.Nil {
+		r.ID = uuid.New()
+	}
+	return nil
+}
+
+func (p *Permission) BeforeCreate(tx *gorm.DB) error {
+	if p.ID == uuid.Nil {
+		p.ID = uuid.New()
+	}
+	return nil
+}
+
+func (ar *AlertRule) BeforeCreate(tx *gorm.DB) error {
+	if ar.ID == uuid.Nil {
+		ar.ID = uuid.New()
+	}
+	return nil
+}
+
+func (a *Alert) BeforeCreate(tx *gorm.DB) error {
+	if a.ID == uuid.Nil {
+		a.ID = uuid.New()
+	}
+	return nil
+}
+
+func (an *AlertNotification) BeforeCreate(tx *gorm.DB) error {
+	if an.ID == uuid.Nil {
+		an.ID = uuid.New()
+	}
+	return nil
+}
+
+func (sc *SystemConfig) BeforeCreate(tx *gorm.DB) error {
+	if sc.ID == uuid.Nil {
+		sc.ID = uuid.New()
+	}
+	return nil
+}
+
+func (al *AuditLog) BeforeCreate(tx *gorm.DB) error {
+	if al.ID == uuid.Nil {
+		al.ID = uuid.New()
+	}
+	return nil
+}
+
+func (aar *AIAnalysisResult) BeforeCreate(tx *gorm.DB) error {
+	if aar.ID == uuid.Nil {
+		aar.ID = uuid.New()
+	}
+	return nil
+}
+
+func (kb *KnowledgeBase) BeforeCreate(tx *gorm.DB) error {
+	if kb.ID == uuid.Nil {
+		kb.ID = uuid.New()
+	}
+	return nil
+}
+
+func (mt *MonitoringTarget) BeforeCreate(tx *gorm.DB) error {
+	if mt.ID == uuid.Nil {
+		mt.ID = uuid.New()
+	}
+	return nil
+}
+
+func (md *MetricData) BeforeCreate(tx *gorm.DB) error {
+	if md.ID == uuid.Nil {
+		md.ID = uuid.New()
+	}
+	return nil
+}
+
+func (d *Dashboard) BeforeCreate(tx *gorm.DB) error {
+	if d.ID == uuid.Nil {
+		d.ID = uuid.New()
+	}
+	return nil
+}
+
+func (nc *NotificationChannel) BeforeCreate(tx *gorm.DB) error {
+	if nc.ID == uuid.Nil {
+		nc.ID = uuid.New()
+	}
+	return nil
+}
+
+func (mm *MiddlewareMonitor) BeforeCreate(tx *gorm.DB) error {
+	if mm.ID == uuid.Nil {
+		mm.ID = uuid.New()
+	}
+	return nil
+}
+
+func (at *APMTrace) BeforeCreate(tx *gorm.DB) error {
+	if at.ID == uuid.Nil {
+		at.ID = uuid.New()
+	}
+	return nil
+}
+
+func (as *APMService) BeforeCreate(tx *gorm.DB) error {
+	if as.ID == uuid.Nil {
+		as.ID = uuid.New()
+	}
+	return nil
+}
+
+func (cm *ContainerMonitor) BeforeCreate(tx *gorm.DB) error {
+	if cm.ID == uuid.Nil {
+		cm.ID = uuid.New()
+	}
+	return nil
+}
+
+func (ai *AgentInfo) BeforeCreate(tx *gorm.DB) error {
+	if ai.ID == uuid.Nil {
+		ai.ID = uuid.New()
+	}
+	return nil
+}
+
+func (ad *AgentDeployment) BeforeCreate(tx *gorm.DB) error {
+	if ad.ID == uuid.Nil {
+		ad.ID = uuid.New()
+	}
+	return nil
+}
+
+func (ap *AgentPackage) BeforeCreate(tx *gorm.DB) error {
+	if ap.ID == uuid.Nil {
+		ap.ID = uuid.New()
+	}
+	return nil
+}
+
+func (ak *APIKey) BeforeCreate(tx *gorm.DB) error {
+	if ak.ID == uuid.Nil {
+		ak.ID = uuid.New()
+	}
+	return nil
+}

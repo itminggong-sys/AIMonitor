@@ -1,0 +1,40 @@
+server:
+  host: "localhost"
+  port: 8080
+  api_key: "your-api-key-here"
+  ssl: false
+
+agent:
+  name: "RabbitMQ Monitor Agent"
+  type: "rabbitmq"
+  interval: 30s
+  timeout: 10s
+
+metrics:
+  enabled: true
+  interval: 30s
+
+logging:
+  level: "info"
+  file: "rabbitmq-agent.log"
+
+# RabbitMQ特定配置
+rabbitmq:
+  management:
+    host: "localhost"
+    port: 15672
+    username: "guest"
+    password: "guest"
+    ssl: false
+    timeout: 10s
+  amqp:
+    host: "localhost"
+    port: 5672
+    username: "guest"
+    password: "guest"
+    vhost: "/"
+    ssl: false
+  monitoring:
+    vhosts: ["/"]  # 要监控的虚拟主机列表
+    queues: []      # 要监控的特定队列，空表示监控所有队列
+    exchanges: []   # 要监控的特定交换器，空表示监控所有交换器

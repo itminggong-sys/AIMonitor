@@ -1,0 +1,29 @@
+server:
+  host: "localhost"
+  port: 8080
+  api_key: "your-api-key-here"
+  ssl: false
+
+agent:
+  name: "MySQL-Server-01"
+  type: "mysql"
+  interval: 30s
+  timeout: 10s
+
+metrics:
+  enabled: true
+  interval: 30s
+
+# MySQL连接配置
+mysql:
+  host: "localhost"
+  port: 3306
+  username: "monitor"
+  password: "monitor_password"
+  database: "information_schema"
+  timeout: 5s
+  max_connections: 10
+  
+logging:
+  level: "info"
+  file: "/var/log/aimonitor-mysql-agent.log"

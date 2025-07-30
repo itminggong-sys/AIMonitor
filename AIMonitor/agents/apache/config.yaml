@@ -1,0 +1,54 @@
+server:
+  host: "localhost"
+  port: 8080
+  api_key: "your-api-key-here"
+  ssl: false
+
+agent:
+  name: "Apache Monitor Agent"
+  type: "apache"
+  interval: 30s
+  timeout: 10s
+
+metrics:
+  enabled: true
+  interval: 30s
+
+logging:
+  level: "info"
+  file: "apache-agent.log"
+
+# Apache特定配置
+apache:
+  server_status_url: "http://localhost/server-status?auto"  # Apache server-status URL
+  server_info_url: "http://localhost/server-info"          # Apache server-info URL
+  config_path: "/etc/apache2/apache2.conf"                 # Apache配置文件路径
+  access_log_path: "/var/log/apache2/access.log"           # 访问日志路径
+  error_log_path: "/var/log/apache2/error.log"             # 错误日志路径
+  pid_file: "/var/run/apache2/apache2.pid"                 # PID文件路径
+  
+  # 监控配置
+  monitoring:
+    parse_logs: true          # 是否解析日志文件
+    log_format: "combined"    # 日志格式
+    max_log_lines: 1000       # 每次读取的最大日志行数
+    
+  # 虚拟主机监控
+  vhosts:
+    enabled: true
+    config_paths:             # 虚拟主机配置文件路径
+      - "/etc/apache2/sites-enabled/*.conf"
+      
+  # SSL监控
+  ssl:
+    enabled: true
+    check_certificates: true   # 是否检查SSL证书
+    cert_expiry_warning_days: 30  # 证书过期警告天数
+    
+  # 模块监控
+  modules:
+    check_loaded: true        # 是否检查已加载的模块
+    critical_modules:         # 关键模块列表
+      - "mod_ssl"
+      - "mod_rewrite"
+      - "mod_headers"

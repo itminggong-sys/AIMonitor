@@ -1,0 +1,501 @@
+version: '3.8'
+
+# AI Monitor 生产环境 Docker Compose 配置
+# 包含完整的监控、日志、备份和安全配置
+
+services:
+  # 主应用服务
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    container_name: ai-monitor-app
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - GIN_MODE=release
+      - DATABASE_URL=postgres://ai_monitor:${DB_PASSWORD:-ai_monitor_2024}@postgres:5432/ai_monitor?sslmode=disable
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET:-ai_monitor_jwt_secret_2024}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@ai-monitor.com}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123456}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./logs:/app/logs
+      - ./config:/app/config:ro
+      - ./data/uploads:/app/uploads
+    networks:
+      - ai-monitor-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
+
+  # PostgreSQL 数据库
+  postgres:
+    image: postgres:15-alpine
+    container_name: ai-monitor-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=ai_monitor
+      - POSTGRES_USER=ai_monitor
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-ai_monitor_2024}
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./scripts/postgres.conf:/etc/postgresql/postgresql.conf:ro
+      - ./backups:/backups
+    ports:
+      - "5432:5432"
+    networks:
+      - ai-monitor-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ai_monitor -d ai_monitor"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+
+  # Redis 缓存
+  redis:
+    image: redis:7-alpine
+    container_name: ai-monitor-redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+    volumes:
+      - redis_data:/data
+      - ./config/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    ports:
+      - "6379:6379"
+    networks:
+      - ai-monitor-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 128M
+          cpus: '0.1'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  # Nginx 反向代理
+  nginx:
+    image: nginx:alpine
+    container_name: ai-monitor-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./ssl:/etc/nginx/ssl:ro
+      - ./logs/nginx:/var/log/nginx
+      - nginx_cache:/var/cache/nginx
+    depends_on:
+      - app
+    networks:
+      - ai-monitor-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+        reservations:
+          memory: 64M
+          cpus: '0.1'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+
+  # Prometheus 监控
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ai-monitor-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/rules:/etc/prometheus/rules:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+      - '--storage.tsdb.retention.size=10GB'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+    networks:
+      - ai-monitor-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.1'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+
+  # Grafana 可视化
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ai-monitor-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin123456}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+      - GF_SERVER_ROOT_URL=http://localhost:3000/
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+    networks:
+      - ai-monitor-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 128M
+          cpus: '0.1'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+
+  # AlertManager 告警管理
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: ai-monitor-alertmanager
+    restart: unless-stopped
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=http://localhost:9093'
+    networks:
+      - ai-monitor-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9093/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.25'
+        reservations:
+          memory: 64M
+          cpus: '0.05'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  # Node Exporter 系统监控
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: ai-monitor-node-exporter
+    restart: unless-stopped
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    networks:
+      - ai-monitor-network
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.25'
+        reservations:
+          memory: 32M
+          cpus: '0.05'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "2"
+
+  # cAdvisor 容器监控
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: ai-monitor-cadvisor
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    privileged: true
+    devices:
+      - /dev/kmsg
+    networks:
+      - ai-monitor-network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.25'
+        reservations:
+          memory: 64M
+          cpus: '0.05'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "2"
+
+  # MinIO 对象存储 (用于备份和文件存储)
+  minio:
+    image: minio/minio:latest
+    container_name: ai-monitor-minio
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_USER:-admin}
+      - MINIO_ROOT_PASSWORD=${MINIO_PASSWORD:-admin123456}
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - ai-monitor-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 128M
+          cpus: '0.1'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+
+  # 数据库备份服务
+  db-backup:
+    image: postgres:15-alpine
+    container_name: ai-monitor-db-backup
+    restart: "no"
+    environment:
+      - PGPASSWORD=${DB_PASSWORD:-ai_monitor_2024}
+    volumes:
+      - ./backups:/backups
+      - ./scripts/backup.sh:/backup.sh:ro
+    command: >
+      sh -c '
+        echo "0 2 * * * /backup.sh" | crontab -
+        crond -f
+      '
+    depends_on:
+      - postgres
+    networks:
+      - ai-monitor-network
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.1'
+        reservations:
+          memory: 32M
+          cpus: '0.05'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "2"
+
+  # 日志收集器 (Fluentd)
+  fluentd:
+    image: fluent/fluentd:v1.16-debian-1
+    container_name: ai-monitor-fluentd
+    restart: unless-stopped
+    ports:
+      - "24224:24224"
+      - "24224:24224/udp"
+    volumes:
+      - ./logging/fluent.conf:/fluentd/etc/fluent.conf:ro
+      - ./logs:/var/log/ai-monitor
+    networks:
+      - ai-monitor-network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.25'
+        reservations:
+          memory: 64M
+          cpus: '0.05'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "2"
+
+# 网络配置
+networks:
+  ai-monitor-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# 数据卷配置
+volumes:
+  postgres_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/postgres
+  
+  redis_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/redis
+  
+  prometheus_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/prometheus
+  
+  grafana_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/grafana
+  
+  alertmanager_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/alertmanager
+  
+  minio_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/minio
+  
+  nginx_cache:
+    driver: local

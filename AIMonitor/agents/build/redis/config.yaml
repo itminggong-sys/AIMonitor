@@ -1,0 +1,27 @@
+server:
+  host: "localhost"
+  port: 8080
+  api_key: "your-api-key-here"
+  ssl: false
+
+agent:
+  name: "Redis-Server-01"
+  type: "redis"
+  interval: 30s
+  timeout: 10s
+
+metrics:
+  enabled: true
+  interval: 30s
+
+# Redis连接配置
+redis:
+  host: "localhost"
+  port: 6379
+  password: ""
+  database: 0
+  timeout: 5s
+  
+logging:
+  level: "info"
+  file: "/var/log/aimonitor-redis-agent.log"

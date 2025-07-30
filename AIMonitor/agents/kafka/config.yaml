@@ -1,0 +1,34 @@
+server:
+  host: "localhost"
+  port: 8080
+  api_key: "your-api-key-here"
+  ssl: false
+
+agent:
+  name: "Kafka Monitor Agent"
+  type: "kafka"
+  interval: 30s
+  timeout: 10s
+
+metrics:
+  enabled: true
+  interval: 30s
+
+logging:
+  level: "info"
+  file: "kafka-agent.log"
+
+# Kafka特定配置
+kafka:
+  brokers:
+    - "localhost:9092"
+  security:
+    protocol: "PLAINTEXT"  # PLAINTEXT, SASL_PLAINTEXT, SASL_SSL, SSL
+    sasl_mechanism: ""      # PLAIN, SCRAM-SHA-256, SCRAM-SHA-512
+    username: ""
+    password: ""
+  admin:
+    timeout: 10s
+  consumer:
+    group_id: "aimonitor-kafka-agent"
+    timeout: 5s

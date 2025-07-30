@@ -1,0 +1,30 @@
+server:
+  host: "localhost"
+  port: 8080
+  api_key: "your-api-key-here"
+  ssl: false
+
+agent:
+  name: "Docker-Host-01"
+  type: "docker"
+  interval: 30s
+  timeout: 10s
+
+metrics:
+  enabled: true
+  interval: 30s
+
+# Docker连接配置
+docker:
+  endpoint: "unix:///var/run/docker.sock"  # Linux
+  # endpoint: "npipe:////./pipe/docker_engine"  # Windows
+  api_version: "1.43"
+  timeout: 10s
+  tls_verify: false
+  cert_path: ""
+  key_path: ""
+  ca_path: ""
+  
+logging:
+  level: "info"
+  file: "/var/log/aimonitor-docker-agent.log"

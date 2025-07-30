@@ -1,0 +1,33 @@
+server:
+  host: "localhost"
+  port: 8080
+  api_key: "your-api-key-here"
+  ssl: false
+
+agent:
+  name: "PostgreSQL Monitor Agent"
+  type: "postgresql"
+  interval: 30s
+  timeout: 10s
+
+metrics:
+  enabled: true
+  interval: 30s
+
+logging:
+  level: "info"
+  file: "postgresql-agent.log"
+
+# PostgreSQL特定配置
+postgresql:
+  host: "localhost"
+  port: 5432
+  database: "postgres"
+  username: "postgres"
+  password: "password"
+  sslmode: "disable"  # disable, require, verify-ca, verify-full
+  connect_timeout: 10s
+  query_timeout: 30s
+  max_connections: 10
+  max_idle_connections: 5
+  connection_max_lifetime: 300s

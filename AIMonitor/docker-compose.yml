@@ -1,0 +1,139 @@
+# Docker Compose configuration for AI Monitor
+# Version removed as it's obsolete in newer Docker Compose versions
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: ai-monitor-postgres
+    environment:
+      POSTGRES_DB: ai_monitor
+      POSTGRES_USER: ai_monitor
+      POSTGRES_PASSWORD: password
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ai_monitor -d ai_monitor"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - aimonitor-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: ai-monitor-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - aimonitor-network
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ai-monitor-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./configs/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+    networks:
+      - aimonitor-network
+
+  aimonitor:
+    image: golang:1.23-alpine
+    container_name: ai-monitor-backend
+    working_dir: /app
+    command: sh -c "apk add --no-cache git ca-certificates curl && go env -w GOPROXY=https://goproxy.cn,direct && go env -w GOSUMDB=sum.golang.org && go env -w GO111MODULE=on && echo 'Initializing Go modules...' && ([ ! -f go.sum ] && touch go.sum || true) && echo 'Starting Go module download with retry...' && for i in 1 2 3; do echo \"Attempt $$i/3\" && go mod download -x && break || (echo \"Download failed, retrying in 5s...\" && sleep 5); done && echo 'Go modules downloaded successfully' && go mod tidy && echo 'Starting application...' && go run cmd/server/main.go"
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_HOST=postgres
+      - REDIS_HOST=redis
+      - GIN_MODE=release
+      - GOPROXY=https://goproxy.cn,direct
+      - GOSUMDB=sum.golang.org
+      - GO111MODULE=on
+      - CGO_ENABLED=0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - ./logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - aimonitor-network
+
+  frontend:
+    image: node:18-alpine
+    container_name: ai-monitor-frontend
+    working_dir: /app
+    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install && npm run dev -- --host 0.0.0.0 --port 3000"
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - VITE_API_BASE_URL=http://localhost:8080
+    volumes:
+      - ./web:/app
+      - /app/node_modules
+    restart: unless-stopped
+    depends_on:
+      - aimonitor
+    networks:
+      - aimonitor-network
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: ai-monitor-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enabled=false
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - aimonitor-network
+
+volumes:
+  postgres_data:
+  redis_data:
+  prometheus_data:
+  elasticsearch_data:
+
+networks:
+  aimonitor-network:
+    driver: bridge
+  default:
+    name: ai-monitor-network

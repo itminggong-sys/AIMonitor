@@ -1,0 +1,335 @@
+# Hyper-V Agent Configuration
+
+# 服务器连接信息
+server:
+  host: "localhost"
+  port: 8080
+  api_key: "your-api-key-here"
+  timeout: 30s
+  retry_count: 3
+  retry_interval: 5s
+
+# Agent基本配置
+agent:
+  id: "hyperv-agent-001"
+  name: "Hyper-V Monitor"
+  type: "hyperv"
+  version: "1.0.0"
+  tags:
+    - "hyperv"
+    - "virtualization"
+    - "windows"
+    - "production"
+  description: "Microsoft Hyper-V monitoring agent"
+
+# 心跳配置
+heartbeat:
+  enabled: true
+  interval: 30s
+  timeout: 10s
+
+# 指标收集配置
+metrics:
+  enabled: true
+  interval: 60s
+  timeout: 30s
+  batch_size: 100
+
+# 日志配置
+logging:
+  level: "info"  # debug, info, warn, error
+  file: "hyperv-agent.log"
+  max_size: 100  # MB
+  max_backups: 5
+  max_age: 30    # days
+  compress: true
+
+# Hyper-V特定配置
+hyperv:
+  # 连接配置
+  connection:
+    # 本地或远程Hyper-V主机
+    computer_name: "localhost"
+    # 认证方式：Default, Basic, Negotiate, NegotiateWithImplicitCredential, Credssp, Digest, Kerberos
+    authentication: "Default"
+    # 凭据（远程连接时需要）
+    credential:
+      username: ""
+      password: ""
+      domain: ""
+    # 连接超时
+    timeout: 30s
+    
+  # PowerShell配置
+  powershell:
+    # PowerShell执行策略
+    execution_policy: "RemoteSigned"
+    # 模块导入
+    modules:
+      - "Hyper-V"
+      - "FailoverClusters"  # 如果使用故障转移集群
+    # 命令超时
+    command_timeout: 60s
+    
+  # WMI配置
+  wmi:
+    enabled: true
+    # WMI命名空间
+    namespace: "root\virtualization\v2"
+    # 连接超时
+    timeout: 30s
+    
+  # 监控配置
+  monitoring:
+    # Hyper-V主机监控
+    host:
+      enabled: true
+      metrics:
+        - "version"
+        - "edition"
+        - "uptime"
+        - "cpu_info"
+        - "memory_info"
+        - "status"
+        
+    # 虚拟机监控
+    virtual_machines:
+      enabled: true
+      # 指定要监控的虚拟机，为空则监控所有
+      include: []
+      # 排除的虚拟机
+      exclude: []
+      # 监控项
+      metrics:
+        - "state"
+        - "cpu_usage"
+        - "memory_usage"
+        - "disk_usage"
+        - "network_usage"
+        - "integration_services"
+        - "checkpoints"
+        - "replication_status"
+        - "uptime"
+      # 只监控运行中的虚拟机
+      running_only: false
+      # 包含已保存状态的虚拟机
+      include_saved: true
+      
+    # 虚拟交换机监控
+    virtual_switches:
+      enabled: true
+      metrics:
+        - "type"  # External, Internal, Private
+        - "status"
+        - "port_count"
+        - "bandwidth_usage"
+        - "packet_statistics"
+        
+    # 存储监控
+    storage:
+      enabled: true
+      metrics:
+        - "vhd_files"
+        - "vhdx_files"
+        - "disk_usage"
+        - "checkpoints"
+        - "storage_qos"
+        
+    # 网络监控
+    network:
+      enabled: true
+      metrics:
+        - "virtual_network_adapters"
+        - "bandwidth_usage"
+        - "packet_statistics"
+        - "vlan_configuration"
+        
+    # 复制监控
+    replication:
+      enabled: true
+      metrics:
+        - "replication_health"
+        - "replication_state"
+        - "last_replication_time"
+        - "replication_frequency"
+        - "replication_size"
+        
+    # 集群监控（如果启用了故障转移集群）
+    cluster:
+      enabled: false
+      metrics:
+        - "cluster_nodes"
+        - "cluster_resources"
+        - "cluster_shared_volumes"
+        - "cluster_networks"
+        - "quorum_configuration"
+        
+  # 性能计数器配置
+  performance_counters:
+    enabled: true
+    # 收集间隔
+    interval: 60s
+    # 计数器列表
+    counters:
+      # Hyper-V虚拟机监控程序逻辑处理器
+      hyperv_logical_processor:
+        - "% Total Run Time"
+        - "% Guest Run Time"
+        - "% Hypervisor Run Time"
+        - "% Remote Run Time"
+        - "Context Switches/sec"
+        
+      # Hyper-V虚拟机监控程序虚拟处理器
+      hyperv_virtual_processor:
+        - "% Total Run Time"
+        - "% Guest Run Time"
+        - "% Hypervisor Run Time"
+        - "CPU Wait Time Per Dispatch"
+        
+      # Hyper-V动态内存VM
+      hyperv_dynamic_memory_vm:
+        - "Physical Memory"
+        - "Guest Visible Physical Memory"
+        - "Current Pressure"
+        - "Average Pressure"
+        - "Minimum Pressure"
+        - "Maximum Pressure"
+        
+      # Hyper-V虚拟存储设备
+      hyperv_virtual_storage_device:
+        - "Read Bytes/sec"
+        - "Write Bytes/sec"
+        - "Read Operations/sec"
+        - "Write Operations/sec"
+        - "Throughput"
+        - "Latency"
+        
+      # Hyper-V虚拟网络适配器
+      hyperv_virtual_network_adapter:
+        - "Bytes/sec"
+        - "Bytes Received/sec"
+        - "Bytes Sent/sec"
+        - "Packets/sec"
+        - "Packets Received/sec"
+        - "Packets Sent/sec"
+        
+  # 告警配置
+  alerts:
+    enabled: true
+    # CPU使用率告警
+    cpu_usage:
+      enabled: true
+      threshold: 80  # 百分比
+      duration: 300s # 持续时间
+    # 内存使用率告警
+    memory_usage:
+      enabled: true
+      threshold: 85  # 百分比
+      duration: 300s
+    # 虚拟机状态告警
+    vm_state:
+      enabled: true
+      # 监控意外关机的虚拟机
+      unexpected_shutdown: true
+      # 监控集成服务状态
+      integration_services: true
+    # 存储告警
+    storage:
+      enabled: true
+      # 磁盘使用率阈值
+      disk_usage_threshold: 90  # 百分比
+      # VHD文件增长率阈值
+      vhd_growth_threshold: 10  # GB/hour
+    # 复制告警
+    replication:
+      enabled: true
+      # 复制健康状态
+      health_critical: true
+      # 复制延迟阈值
+      lag_threshold: 3600  # 秒
+    # 集群告警
+    cluster:
+      enabled: false
+      # 节点离线告警
+      node_offline: true
+      # 仲裁丢失告警
+      quorum_loss: true
+      
+  # 数据收集配置
+  collection:
+    # 并发收集
+    concurrent: true
+    # 最大并发数
+    max_concurrent: 10
+    # 收集超时
+    timeout: 60s
+    # 重试配置
+    retry:
+      max_attempts: 3
+      interval: 5s
+      
+  # 缓存配置
+  cache:
+    enabled: true
+    # 缓存过期时间
+    ttl: 300s
+    # 最大缓存条目数
+    max_entries: 1000
+    
+  # 数据过滤配置
+  filters:
+    # 按虚拟机名称过滤
+    vm_names:
+      enabled: false
+      include_patterns: []
+      exclude_patterns: []
+    # 按虚拟机状态过滤
+    vm_states:
+      enabled: false
+      include: ["Running", "Off", "Saved"]
+      exclude: []
+    # 按标签过滤
+    tags:
+      enabled: false
+      include: []
+      exclude: []
+      
+  # 安全配置
+  security:
+    # 启用安全模式
+    secure_mode: true
+    # 加密传输
+    encrypt_transport: true
+    # 证书验证
+    verify_certificates: true
+    # 最小TLS版本
+    min_tls_version: "1.2"
+    
+  # 日志配置
+  hyperv_logging:
+    # 启用Hyper-V事件日志监控
+    event_logs: true
+    # 事件日志源
+    event_sources:
+      - "Microsoft-Windows-Hyper-V-VMMS"
+      - "Microsoft-Windows-Hyper-V-Worker"
+      - "Microsoft-Windows-Hyper-V-VID"
+      - "Microsoft-Windows-Hyper-V-Hypervisor"
+    # 事件级别
+    event_levels:
+      - "Error"
+      - "Warning"
+      - "Information"
+    # 最大事件数
+    max_events: 1000
+    
+  # 导出配置
+  export:
+    # 导出格式
+    format: "json"  # json, xml, csv
+    # 压缩
+    compression: true
+    # 批量大小
+    batch_size: 1000
+    # 包含详细信息
+    include_details: true

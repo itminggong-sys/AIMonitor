@@ -1,0 +1,41 @@
+# Ollama本地AI服务配置示例
+# 将此配置添加到你的主配置文件中以启用Ollama支持
+
+ai_models:
+  openai:
+    # 使用任意API Key（Ollama不需要真实的OpenAI API Key）
+    api_key: "ollama-local-key"
+    # 配置Ollama服务的BaseURL
+    base_url: "http://localhost:11434/v1"
+    # 使用Ollama中已安装的模型
+    model: "llama2"  # 或其他已安装的模型如: qwen:7b, codellama, mistral等
+    temperature: 0.7
+    max_tokens: 2000
+    timeout: 60s
+    rate_limit:
+      requests_per_minute: 60
+      tokens_per_minute: 10000
+    cost_limit:
+      daily_limit: 0.0  # Ollama本地服务无成本
+      monthly_limit: 0.0
+      alert_threshold: 0.0
+
+# 使用说明：
+# 1. 确保Ollama服务正在运行: ollama serve
+# 2. 安装所需模型: ollama pull llama2
+# 3. 验证模型可用: ollama list
+# 4. 更新主配置文件中的ai_models部分
+# 5. 重启AI Monitor服务
+
+# 常用Ollama模型：
+# - llama2: 通用对话模型
+# - codellama: 代码生成和分析
+# - qwen:7b: 中文优化模型
+# - mistral: 高性能轻量模型
+# - phi: 微软小型高效模型
+
+# 注意事项：
+# - Ollama默认运行在11434端口
+# - BaseURL必须包含/v1后缀以兼容OpenAI API格式
+# - 模型名称必须与Ollama中已安装的模型匹配
+# - 本地服务无需真实API Key，但不能为空

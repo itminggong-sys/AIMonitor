@@ -1,0 +1,189 @@
+# Elasticsearch Agent Configuration
+
+# 服务器连接信息
+server:
+  host: "localhost"
+  port: 8080
+  api_key: "your-api-key-here"
+  timeout: 30s
+  retry_count: 3
+  retry_interval: 5s
+
+# Agent基本配置
+agent:
+  id: "elasticsearch-agent-001"
+  name: "Elasticsearch Monitor"
+  type: "elasticsearch"
+  version: "1.0.0"
+  tags:
+    - "elasticsearch"
+    - "search-engine"
+    - "production"
+  description: "Elasticsearch monitoring agent"
+
+# 心跳配置
+heartbeat:
+  enabled: true
+  interval: 30s
+  timeout: 10s
+
+# 指标收集配置
+metrics:
+  enabled: true
+  interval: 60s
+  timeout: 30s
+  batch_size: 100
+
+# 日志配置
+logging:
+  level: "info"  # debug, info, warn, error
+  file: "elasticsearch-agent.log"
+  max_size: 100  # MB
+  max_backups: 5
+  max_age: 30    # days
+  compress: true
+
+# Elasticsearch特定配置
+elasticsearch:
+  # 连接配置
+  connection:
+    hosts:
+      - "http://localhost:9200"
+    username: "elastic"
+    password: "password"
+    timeout: 30s
+    max_retries: 3
+    retry_backoff: 1s
+    
+  # TLS/SSL配置
+  tls:
+    enabled: false
+    cert_file: "/path/to/cert.pem"
+    key_file: "/path/to/key.pem"
+    ca_file: "/path/to/ca.pem"
+    insecure_skip_verify: false
+    
+  # API配置
+  api:
+    version: "7.x"  # 6.x, 7.x, 8.x
+    
+  # 监控配置
+  monitoring:
+    # 集群监控
+    cluster:
+      enabled: true
+      health_check: true
+      stats: true
+      
+    # 节点监控
+    nodes:
+      enabled: true
+      stats: true
+      info: true
+      
+    # 索引监控
+    indices:
+      enabled: true
+      stats: true
+      settings: false
+      mappings: false
+      # 指定要监控的索引模式
+      patterns:
+        - "*"
+      # 排除的索引模式
+      exclude_patterns:
+        - ".kibana*"
+        - ".security*"
+        
+    # 分片监控
+    shards:
+      enabled: true
+      
+    # 任务监控
+    tasks:
+      enabled: true
+      
+    # 线程池监控
+    thread_pools:
+      enabled: true
+      pools:
+        - "search"
+        - "index"
+        - "bulk"
+        - "get"
+        
+    # JVM监控
+    jvm:
+      enabled: true
+      gc: true
+      memory: true
+      threads: true
+      
+    # 文件系统监控
+    filesystem:
+      enabled: true
+      
+    # 网络监控
+    network:
+      enabled: true
+      
+    # 缓存监控
+    cache:
+      enabled: true
+      query_cache: true
+      field_data_cache: true
+      request_cache: true
+      
+    # 搜索监控
+    search:
+      enabled: true
+      slow_log: true
+      
+    # 索引监控
+    indexing:
+      enabled: true
+      slow_log: true
+      
+  # 告警配置
+  alerts:
+    enabled: true
+    # 集群状态告警
+    cluster_status:
+      red: true
+      yellow: true
+    # 磁盘使用率告警
+    disk_usage:
+      enabled: true
+      threshold: 85  # 百分比
+    # 内存使用率告警
+    memory_usage:
+      enabled: true
+      threshold: 90  # 百分比
+    # 搜索延迟告警
+    search_latency:
+      enabled: true
+      threshold: 1000  # 毫秒
+    # 索引延迟告警
+    index_latency:
+      enabled: true
+      threshold: 500  # 毫秒
+      
+  # 性能配置
+  performance:
+    # 并发请求数
+    max_concurrent_requests: 10
+    # 请求超时
+    request_timeout: 30s
+    # 连接池大小
+    connection_pool_size: 10
+    # 保持连接时间
+    keep_alive: 30s
+    
+  # 数据保留配置
+  retention:
+    # 指标数据保留天数
+    metrics_days: 30
+    # 日志数据保留天数
+    logs_days: 7
+    # 自动清理
+    auto_cleanup: true

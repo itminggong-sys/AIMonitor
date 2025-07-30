@@ -1,0 +1,438 @@
+# APM Agent Configuration
+
+# 服务器连接信息
+server:
+  host: "localhost"
+  port: 8080
+  api_key: "your-api-key-here"
+  timeout: 30s
+  retry_count: 3
+  retry_interval: 5s
+
+# Agent基本配置
+agent:
+  id: "apm-agent-001"
+  name: "APM Monitor"
+  type: "apm"
+  version: "1.0.0"
+  tags:
+    - "apm"
+    - "monitoring"
+    - "observability"
+    - "production"
+  description: "Application Performance Monitoring agent"
+
+# 心跳配置
+heartbeat:
+  enabled: true
+  interval: 30s
+  timeout: 10s
+
+# 指标收集配置
+metrics:
+  enabled: true
+  interval: 60s
+  timeout: 30s
+  batch_size: 100
+
+# 日志配置
+logging:
+  level: "info"  # debug, info, warn, error
+  file: "apm-agent.log"
+  max_size: 100  # MB
+  max_backups: 5
+  max_age: 30    # days
+  compress: true
+
+# APM特定配置
+apm:
+  # Prometheus配置
+  prometheus:
+    enabled: true
+    # Prometheus服务器地址
+    url: "http://localhost:9090"
+    # 认证配置
+    auth:
+      type: "none"  # none, basic, bearer, oauth2
+      username: ""
+      password: ""
+      token: ""
+    # TLS配置
+    tls:
+      enabled: false
+      cert_file: "/path/to/cert.pem"
+      key_file: "/path/to/key.pem"
+      ca_file: "/path/to/ca.pem"
+      insecure_skip_verify: false
+    # 查询配置
+    queries:
+      # 基础指标
+      basic_metrics:
+        - "up"
+        - "prometheus_config_last_reload_successful"
+        - "prometheus_notifications_total"
+        - "prometheus_notifications_failed_total"
+      # 目标指标
+      target_metrics:
+        - "prometheus_sd_discovered_targets"
+        - "prometheus_sd_received_updates_total"
+        - "prometheus_sd_updates_total"
+      # TSDB指标
+      tsdb_metrics:
+        - "prometheus_tsdb_head_samples_appended_total"
+        - "prometheus_tsdb_head_series"
+        - "prometheus_tsdb_wal_size_bytes"
+        - "prometheus_tsdb_compaction_chunk_size_bytes"
+      # 抓取指标
+      scrape_metrics:
+        - "prometheus_scrape_duration_seconds"
+        - "prometheus_scrape_samples_scraped"
+        - "prometheus_scrape_samples_post_metric_relabeling"
+    # 超时配置
+    timeout: 30s
+    # 重试配置
+    retry:
+      max_attempts: 3
+      interval: 5s
+      
+  # Grafana配置
+  grafana:
+    enabled: true
+    # Grafana服务器地址
+    url: "http://localhost:3000"
+    # API密钥
+    api_key: "your-grafana-api-key"
+    # 认证配置
+    auth:
+      type: "api_key"  # api_key, basic, oauth2
+      username: "admin"
+      password: "admin"
+    # TLS配置
+    tls:
+      enabled: false
+      cert_file: "/path/to/cert.pem"
+      key_file: "/path/to/key.pem"
+      ca_file: "/path/to/ca.pem"
+      insecure_skip_verify: false
+    # 监控项
+    monitoring:
+      # 用户和组织
+      users_orgs: true
+      # 仪表板
+      dashboards: true
+      # 数据源
+      datasources: true
+      # 告警
+      alerts: true
+      # 会话
+      sessions: true
+      # 数据库连接
+      database: true
+    # 超时配置
+    timeout: 30s
+    
+  # Jaeger配置
+  jaeger:
+    enabled: true
+    # Jaeger查询服务地址
+    query_url: "http://localhost:16686"
+    # Jaeger收集器地址
+    collector_url: "http://localhost:14268"
+    # 认证配置
+    auth:
+      type: "none"  # none, basic, bearer
+      username: ""
+      password: ""
+      token: ""
+    # TLS配置
+    tls:
+      enabled: false
+      cert_file: "/path/to/cert.pem"
+      key_file: "/path/to/key.pem"
+      ca_file: "/path/to/ca.pem"
+      insecure_skip_verify: false
+    # 监控项
+    monitoring:
+      # 跨度统计
+      spans: true
+      # 跟踪统计
+      traces: true
+      # 服务统计
+      services: true
+      # 操作统计
+      operations: true
+      # 收集器队列
+      collector_queue: true
+    # 超时配置
+    timeout: 30s
+    
+  # Zipkin配置
+  zipkin:
+    enabled: true
+    # Zipkin服务器地址
+    url: "http://localhost:9411"
+    # 认证配置
+    auth:
+      type: "none"  # none, basic, bearer
+      username: ""
+      password: ""
+      token: ""
+    # TLS配置
+    tls:
+      enabled: false
+      cert_file: "/path/to/cert.pem"
+      key_file: "/path/to/key.pem"
+      ca_file: "/path/to/ca.pem"
+      insecure_skip_verify: false
+    # 监控项
+    monitoring:
+      # 跨度统计
+      spans: true
+      # 服务统计
+      services: true
+      # HTTP请求统计
+      http_requests: true
+      # 存储统计
+      storage: true
+    # 超时配置
+    timeout: 30s
+    
+  # Elastic APM配置
+  elastic_apm:
+    enabled: true
+    # Elasticsearch地址
+    elasticsearch_url: "http://localhost:9200"
+    # APM服务器地址
+    apm_server_url: "http://localhost:8200"
+    # 认证配置
+    auth:
+      type: "none"  # none, basic, api_key
+      username: "elastic"
+      password: "password"
+      api_key: ""
+    # TLS配置
+    tls:
+      enabled: false
+      cert_file: "/path/to/cert.pem"
+      key_file: "/path/to/key.pem"
+      ca_file: "/path/to/ca.pem"
+      insecure_skip_verify: false
+    # 监控项
+    monitoring:
+      # 事件统计
+      events: true
+      # 事务统计
+      transactions: true
+      # 跨度统计
+      spans: true
+      # 错误统计
+      errors: true
+      # 指标集统计
+      metricsets: true
+      # 处理器统计
+      processor: true
+    # 超时配置
+    timeout: 30s
+    
+  # New Relic配置
+  new_relic:
+    enabled: true
+    # New Relic API地址
+    api_url: "https://api.newrelic.com"
+    # API密钥
+    api_key: "your-newrelic-api-key"
+    # 账户ID
+    account_id: "your-account-id"
+    # 监控项
+    monitoring:
+      # 应用程序
+      applications: true
+      # 事务
+      transactions: true
+      # 错误
+      errors: true
+      # 性能指标
+      performance: true
+      # Apdex分数
+      apdex: true
+    # 超时配置
+    timeout: 30s
+    
+  # SkyWalking配置
+  skywalking:
+    enabled: true
+    # SkyWalking OAP地址
+    oap_url: "http://localhost:12800"
+    # GraphQL端点
+    graphql_url: "http://localhost:12800/graphql"
+    # 认证配置
+    auth:
+      type: "none"  # none, basic, bearer
+      username: ""
+      password: ""
+      token: ""
+    # TLS配置
+    tls:
+      enabled: false
+      cert_file: "/path/to/cert.pem"
+      key_file: "/path/to/key.pem"
+      ca_file: "/path/to/ca.pem"
+      insecure_skip_verify: false
+    # 监控项
+    monitoring:
+      # 服务统计
+      services: true
+      # 服务实例统计
+      service_instances: true
+      # 端点统计
+      endpoints: true
+      # 跟踪统计
+      traces: true
+      # 段统计
+      segments: true
+      # 日志统计
+      logs: true
+      # JVM指标
+      jvm_metrics: true
+    # 超时配置
+    timeout: 30s
+    
+  # Datadog配置
+  datadog:
+    enabled: false
+    # Datadog API地址
+    api_url: "https://api.datadoghq.com"
+    # API密钥
+    api_key: "your-datadog-api-key"
+    # 应用密钥
+    app_key: "your-datadog-app-key"
+    # 监控项
+    monitoring:
+      # 主机
+      hosts: true
+      # 指标
+      metrics: true
+      # 事件
+      events: true
+      # 日志
+      logs: true
+      # 跟踪
+      traces: true
+    # 超时配置
+    timeout: 30s
+    
+  # AppDynamics配置
+  appdynamics:
+    enabled: false
+    # AppDynamics控制器地址
+    controller_url: "https://your-account.saas.appdynamics.com"
+    # 账户名
+    account_name: "your-account"
+    # 用户名
+    username: "your-username"
+    # 密码
+    password: "your-password"
+    # 监控项
+    monitoring:
+      # 应用程序
+      applications: true
+      # 业务事务
+      business_transactions: true
+      # 节点
+      nodes: true
+      # 错误
+      errors: true
+      # 性能指标
+      performance: true
+    # 超时配置
+    timeout: 30s
+    
+# 告警配置
+alerts:
+  enabled: true
+  # 服务可用性告警
+  service_availability:
+    enabled: true
+    # 检查间隔
+    check_interval: 60s
+    # 失败阈值
+    failure_threshold: 3
+  # 响应时间告警
+  response_time:
+    enabled: true
+    # 阈值（秒）
+    threshold: 1.0
+    # 持续时间
+    duration: 300s
+  # 错误率告警
+  error_rate:
+    enabled: true
+    # 阈值（百分比）
+    threshold: 5.0
+    # 持续时间
+    duration: 300s
+  # 吞吐量告警
+  throughput:
+    enabled: true
+    # 最小阈值
+    min_threshold: 100
+    # 最大阈值
+    max_threshold: 10000
+    # 持续时间
+    duration: 300s
+    
+# 数据聚合配置
+aggregation:
+  enabled: true
+  # 聚合间隔
+  interval: 300s
+  # 聚合函数
+  functions:
+    - "avg"
+    - "min"
+    - "max"
+    - "sum"
+    - "count"
+  # 保留原始数据
+  keep_raw_data: false
+  
+# 缓存配置
+cache:
+  enabled: true
+  # 缓存过期时间
+  ttl: 300s
+  # 最大缓存条目数
+  max_entries: 10000
+  # 缓存清理间隔
+  cleanup_interval: 600s
+  
+# 并发配置
+concurrency:
+  # 最大并发连接数
+  max_connections: 50
+  # 最大并发请求数
+  max_requests: 100
+  # 请求队列大小
+  queue_size: 1000
+  
+# 重试配置
+retry:
+  # 最大重试次数
+  max_attempts: 3
+  # 重试间隔
+  interval: 5s
+  # 指数退避
+  exponential_backoff: true
+  # 最大重试间隔
+  max_interval: 60s
+  
+# 数据导出配置
+export:
+  # 导出格式
+  format: "json"  # json, xml, csv, prometheus
+  # 压缩
+  compression: true
+  # 批量大小
+  batch_size: 1000
+  # 包含元数据
+  include_metadata: true

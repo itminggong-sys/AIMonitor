@@ -1,0 +1,19 @@
+server:
+  host: "localhost"
+  port: 8080
+  api_key: "your-api-key-here"
+  ssl: false
+
+agent:
+  name: "Windows-Server-01"
+  type: "windows"
+  interval: 30s
+  timeout: 10s
+
+metrics:
+  enabled: true
+  interval: 30s
+  
+logging:
+  level: "info"
+  file: "C:\\logs\\aimonitor-agent.log"

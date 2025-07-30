@@ -1,0 +1,48 @@
+{
+  "name": "ai-monitor-web",
+  "version": "1.0.0",
+  "description": "AI Monitor System Web Frontend",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build --mode production",
+    "preview": "vite preview",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "lint:fix": "eslint . --ext ts,tsx --fix"
+  },
+  "dependencies": {
+    "@ant-design/icons": "^5.2.6",
+    "@tanstack/react-query": "^5.14.2",
+    "ahooks": "^3.9.0",
+    "antd": "^5.12.8",
+    "axios": "^1.6.2",
+    "dayjs": "^1.11.10",
+    "echarts": "^5.4.3",
+    "echarts-for-react": "^3.0.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-helmet-async": "^2.0.4",
+    "react-router-dom": "^6.8.1",
+    "recharts": "^2.8.0",
+    "socket.io-client": "^4.7.4",
+    "zustand": "^4.4.7"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.43",
+    "@types/react-dom": "^18.2.17",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
+    "@vitejs/plugin-react": "^4.2.1",
+    "eslint": "^8.55.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.5",
+    "terser": "^5.43.1",
+    "typescript": "^5.2.2",
+    "vite": "^5.0.8",
+    "vite-plugin-eslint": "^1.8.1"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  }
+}

@@ -1,0 +1,306 @@
+# VMware Agent Configuration
+
+# 服务器连接信息
+server:
+  host: "localhost"
+  port: 8080
+  api_key: "your-api-key-here"
+  timeout: 30s
+  retry_count: 3
+  retry_interval: 5s
+
+# Agent基本配置
+agent:
+  id: "vmware-agent-001"
+  name: "VMware Monitor"
+  type: "vmware"
+  version: "1.0.0"
+  tags:
+    - "vmware"
+    - "virtualization"
+    - "vsphere"
+    - "production"
+  description: "VMware vSphere monitoring agent"
+
+# 心跳配置
+heartbeat:
+  enabled: true
+  interval: 30s
+  timeout: 10s
+
+# 指标收集配置
+metrics:
+  enabled: true
+  interval: 60s
+  timeout: 30s
+  batch_size: 100
+
+# 日志配置
+logging:
+  level: "info"  # debug, info, warn, error
+  file: "vmware-agent.log"
+  max_size: 100  # MB
+  max_backups: 5
+  max_age: 30    # days
+  compress: true
+
+# VMware特定配置
+vmware:
+  # vCenter连接配置
+  vcenter:
+    host: "vcenter.example.com"
+    port: 443
+    username: "administrator@vsphere.local"
+    password: "password"
+    insecure: false
+    timeout: 30s
+    
+  # TLS/SSL配置
+  tls:
+    enabled: true
+    cert_file: "/path/to/cert.pem"
+    key_file: "/path/to/key.pem"
+    ca_file: "/path/to/ca.pem"
+    insecure_skip_verify: false
+    
+  # 会话配置
+  session:
+    keep_alive: true
+    keep_alive_interval: 300s  # 5分钟
+    timeout: 3600s             # 1小时
+    
+  # 监控配置
+  monitoring:
+    # 数据中心监控
+    datacenters:
+      enabled: true
+      # 指定要监控的数据中心，为空则监控所有
+      include: []
+      # 排除的数据中心
+      exclude: []
+      
+    # 集群监控
+    clusters:
+      enabled: true
+      # 指定要监控的集群，为空则监控所有
+      include: []
+      # 排除的集群
+      exclude: []
+      # 监控项
+      metrics:
+        - "cpu"
+        - "memory"
+        - "storage"
+        - "network"
+        - "ha_status"
+        - "drs_status"
+        
+    # ESXi主机监控
+    hosts:
+      enabled: true
+      # 指定要监控的主机，为空则监控所有
+      include: []
+      # 排除的主机
+      exclude: []
+      # 监控项
+      metrics:
+        - "cpu"
+        - "memory"
+        - "storage"
+        - "network"
+        - "power_state"
+        - "connection_state"
+        - "maintenance_mode"
+        - "uptime"
+        
+    # 虚拟机监控
+    virtual_machines:
+      enabled: true
+      # 指定要监控的虚拟机，为空则监控所有
+      include: []
+      # 排除的虚拟机
+      exclude: []
+      # 监控项
+      metrics:
+        - "cpu"
+        - "memory"
+        - "storage"
+        - "network"
+        - "power_state"
+        - "tools_status"
+        - "guest_os"
+        - "uptime"
+      # 只监控运行中的虚拟机
+      powered_on_only: false
+      
+    # 存储监控
+    datastores:
+      enabled: true
+      # 指定要监控的数据存储，为空则监控所有
+      include: []
+      # 排除的数据存储
+      exclude: []
+      # 监控项
+      metrics:
+        - "capacity"
+        - "free_space"
+        - "used_space"
+        - "accessibility"
+        - "type"
+        - "multipleHostAccess"
+        
+    # 网络监控
+    networks:
+      enabled: true
+      # 监控项
+      metrics:
+        - "portgroups"
+        - "vswitches"
+        - "dvswitches"
+        - "uplinks"
+        
+    # 资源池监控
+    resource_pools:
+      enabled: true
+      # 监控项
+      metrics:
+        - "cpu_allocation"
+        - "memory_allocation"
+        - "cpu_usage"
+        - "memory_usage"
+        
+  # 性能监控配置
+  performance:
+    enabled: true
+    # 性能计数器收集间隔
+    interval: 300s  # 5分钟
+    # 历史数据收集
+    historical:
+      enabled: false
+      # 收集多长时间的历史数据
+      duration: 24h
+      # 历史数据间隔
+      interval: 1h
+      
+    # 实时性能监控
+    realtime:
+      enabled: true
+      # 实时数据收集间隔
+      interval: 20s
+      
+    # 性能计数器
+    counters:
+      cpu:
+        - "usage.average"
+        - "usagemhz.average"
+        - "ready.summation"
+        - "costop.summation"
+      memory:
+        - "usage.average"
+        - "consumed.average"
+        - "active.average"
+        - "balloon.average"
+        - "swapped.average"
+      disk:
+        - "usage.average"
+        - "read.average"
+        - "write.average"
+        - "totalReadLatency.average"
+        - "totalWriteLatency.average"
+      network:
+        - "usage.average"
+        - "received.average"
+        - "transmitted.average"
+        - "packetsRx.summation"
+        - "packetsTx.summation"
+        
+  # 告警配置
+  alerts:
+    enabled: true
+    # CPU使用率告警
+    cpu_usage:
+      enabled: true
+      threshold: 80  # 百分比
+      duration: 300s # 持续时间
+    # 内存使用率告警
+    memory_usage:
+      enabled: true
+      threshold: 85  # 百分比
+      duration: 300s
+    # 存储使用率告警
+    storage_usage:
+      enabled: true
+      threshold: 90  # 百分比
+      duration: 60s
+    # 主机连接状态告警
+    host_connection:
+      enabled: true
+      # 监控断开连接的主机
+      disconnected: true
+      # 监控维护模式的主机
+      maintenance: true
+    # 虚拟机状态告警
+    vm_status:
+      enabled: true
+      # 监控意外关机的虚拟机
+      unexpected_shutdown: true
+      # 监控VMware Tools状态
+      tools_status: true
+    # 数据存储可访问性告警
+    datastore_accessibility:
+      enabled: true
+      
+  # 缓存配置
+  cache:
+    enabled: true
+    # 缓存过期时间
+    ttl: 300s
+    # 最大缓存条目数
+    max_entries: 1000
+    
+  # 并发配置
+  concurrency:
+    # 最大并发连接数
+    max_connections: 10
+    # 最大并发请求数
+    max_requests: 50
+    # 请求队列大小
+    queue_size: 100
+    
+  # 重试配置
+  retry:
+    # 最大重试次数
+    max_attempts: 3
+    # 重试间隔
+    interval: 5s
+    # 指数退避
+    exponential_backoff: true
+    # 最大重试间隔
+    max_interval: 60s
+    
+  # 数据过滤配置
+  filters:
+    # 按标签过滤
+    tags:
+      enabled: false
+      include: []
+      exclude: []
+    # 按名称过滤
+    names:
+      enabled: false
+      include_patterns: []
+      exclude_patterns: []
+    # 按状态过滤
+    states:
+      enabled: false
+      include: []
+      exclude: []
+      
+  # 数据导出配置
+  export:
+    # 导出格式
+    format: "json"  # json, xml, csv
+    # 压缩
+    compression: true
+    # 批量大小
+    batch_size: 1000
