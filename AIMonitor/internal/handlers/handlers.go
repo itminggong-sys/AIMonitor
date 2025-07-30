@@ -2720,41 +2720,29 @@ func (h *Handlers) GetDeployments(c *gin.Context) {
 func (h *Handlers) GetUsers(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
-	role := c.Query("role")
-	status := c.Query("status")
+	search := c.Query("search")
 
-	_ = role   // 避免未使用变量错误
-	_ = status // 避免未使用变量错误
-
-	// 模拟用户数据
-	users := []map[string]interface{}{
-		{
-			"id":         "user-1",
-			"username":   "admin",
-			"email":      "admin@example.com",
-			"role":       "admin",
-			"status":     "active",
-			"created_at": time.Now().Add(-30 * 24 * time.Hour),
-			"last_login": time.Now().Add(-2 * time.Hour),
-		},
-		{
-			"id":         "user-2",
-			"username":   "operator",
-			"email":      "operator@example.com",
-			"role":       "operator",
-			"status":     "active",
-			"created_at": time.Now().Add(-15 * 24 * time.Hour),
-			"last_login": time.Now().Add(-1 * time.Hour),
-		},
+	// 使用真正的用户服务获取用户列表
+	users, total, err := h.userService.ListUsers(page, pageSize, search)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code": 500,
+			"message": "获取用户列表失败",
+			"error": err.Error(),
+		})
+		return
 	}
+
+	// 计算总页数
+	totalPages := int((total + int64(pageSize) - 1) / int64(pageSize))
 
 	response := PaginatedResponse{
 		Data: users,
 		Pagination: PaginationInfo{
 			Page:     page,
 			PageSize: pageSize,
-			Total:    len(users),
-			Pages:    1,
+			Total:    int(total),
+			Pages:    totalPages,
 		},
 	}
 
@@ -2767,7 +2755,7 @@ func (h *Handlers) GetUsers(c *gin.Context) {
 
 // CreateUser 创建用户
 func (h *Handlers) CreateUser(c *gin.Context) {
-	var req map[string]interface{}
+	var req services.CreateUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
 			Error:   "Invalid request body",
@@ -2776,14 +2764,15 @@ func (h *Handlers) CreateUser(c *gin.Context) {
 		return
 	}
 
-	// 模拟创建用户
-	user := map[string]interface{}{
-		"id":         uuid.New().String(),
-		"username":   req["username"],
-		"email":      req["email"],
-		"role":       req["role"],
-		"status":     "active",
-		"created_at": time.Now(),
+	// 使用真正的用户服务创建用户
+	user, err := h.userService.CreateUser(&req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code": 500,
+			"message": "用户创建失败",
+			"error": err.Error(),
+		})
+		return
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
